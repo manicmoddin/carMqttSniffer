@@ -1,0 +1,6 @@
+services:
+  app:
+    build: ./python/
+    restart: always  
+    volumes:
+      - ./app.log:/app/sample.log
