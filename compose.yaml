@@ -1,6 +1,7 @@
 services:
   app:
-    build: ./python/
+    # build: ./python/
+    image: manicmoddin/car-mqtt-sniffer:latest
     restart: always  
     volumes:
       - ./app.log:/app/app.log
