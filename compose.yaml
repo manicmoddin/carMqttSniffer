@@ -3,4 +3,14 @@ services:
     build: ./python/
     restart: always  
     volumes:
-      - ./app.log:/app/sample.log
+      - ./app.log:/app/app.log
+    environment:
+      - MQTT=${MQTT}
+      - MQTT_USER=${MQTT_USER}
+      - MQTT_PASS=${MQTT_PASS}
+      - MQTT_SERV=${MQTT_SERV}
+      - MQTT_PORT=${MQTT_PORT}
+      - MQTT_BASE=${MQTT_BASE}
+      - LUBELOGGER=${LUBELOGGER}
+      - LUBELOGGER_ADDRESS=${LUBELOGGER_ADDRESS}
+      - LUBELOGGER_PORT=${LUBELOGGER_PORT}

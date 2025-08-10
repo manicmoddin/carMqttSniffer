@@ -1,30 +1,47 @@
-from dotenv import dotenv_values
 from datetime import datetime
-import paho.mqtt.client as mqtt
 import json
 import time
-import requests
 from pprint import pprint
 import random
 import logging
+import os
 
-logging.basicConfig(filename="sample.log", level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+import paho.mqtt.client as mqtt
+import requests
+
+logging.basicConfig(filename="app.log", \
+                    level=logging.DEBUG, \
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', \
+                    force=True)
+logging.info('-----------')
 logging.info("App Started")
 
-config = dotenv_values(".env")
-logging.debug(config)
+current_dir = os.path.dirname(os.path.realpath(__file__))
+logging.debug(f"Working DIR: {current_dir}")
 
-# Define the MQTT broker details
-broker_address = config['MQTT_SERV']
-broker_port = int(config['MQTT_PORT'])
-broker_user = config['MQTT_USER']
-broker_pass = config['MQTT_PASS']
-broker_client_id = random.random()
-topic = config['MQTT_BASE']
+mqtt_configured = os.environ.get("MQTT", False)
+lube_configured = os.environ.get('LUBELOGGER', False)
+
+if mqtt_configured != False:
+    # Define the MQTT broker details
+    broker_address = os.environ.get('MQTT_SERV')
+    broker_port = int(os.environ.get('MQTT_PORT'))
+    broker_user = os.environ.get('MQTT_USER')
+    broker_pass = os.environ.get('MQTT_PASS')
+    broker_client_id = str(random.random())
+    topic = os.environ.get('MQTT_BASE')
+
+else:
+    logging.critical("No MQTT configured, exiting")
+    exit()
 
 # Lubelogger Details
-lubelogger_base_url = config['LUBELOGGER_ADDRESS']
-lubelogger_port = config['LUBELOGGER_PORT']
+if lube_configured != False :
+    lubelogger_base_url = os.environ.get('LUBELOGGER_ADDRESS')
+    lubelogger_port = os.environ.get('LUBELOGGER_PORT')
+else:
+    logging.critical("No LubeLogger Configured, Exiting")
+    exit()
 
 if lubelogger_port != '':
     lubelogger_url = 'http://'+ str(lubelogger_base_url) + ':' + str(lubelogger_port)
@@ -83,7 +100,6 @@ def update_odo(new_odo, car_id):
     api_address = f"/api/vehicle/odometerrecords/add?vehicleId={car_id}"
     now = datetime.strftime(datetime.now(), "%Y-%m-%d")
     new_odo = int(float(new_odo))
-    print(new_odo)
     body = {'date': now, 'odometer':int(new_odo)}
     x = requests.post(f"{lubelogger_url}{api_address}", json = body)
     data = x.text
@@ -95,9 +111,12 @@ def update_odo(new_odo, car_id):
 
 # Callback when the client connects to the broker
 def on_connect(client, userdata, flags, rc, properties=None):
-    logging.info(f"Connected with result code {rc}")
-    # Subscribe to the topic when connected
-    client.subscribe(topic)
+    if rc == 0:
+        logging.info(f"Connected with result code {rc}")
+        # Subscribe to the topic when connected
+        client.subscribe(topic)
+    else:
+        logging.error(f"Reconnection failed. Error: {rc}")
 
 # Callback when a message is received from the subscribed topic
 def on_message(client, userdata, msg):
@@ -140,7 +159,7 @@ def on_disconnect(client, userdata, flags, rc, properties=None):
             time.sleep(5)
 
 # Create an MQTT client instance
-client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, "Bob2")
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=broker_client_id)
 
 # Set up the callback function
 client.on_connect = on_connect
@@ -150,7 +169,7 @@ client.on_disconnect = on_disconnect
 client.username_pw_set(broker_user, broker_pass)
 
 # Connect to the MQTT broker
-client.connect(broker_address, broker_port)
+client.connect(broker_address, int(broker_port))
 
 # Run the client loop to start listening for messages
 client.loop_forever()
